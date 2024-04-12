@@ -1,7 +1,10 @@
+use std::path::PathBuf;
 use std::process::exit;
 
+use crate::utils::MaybeError;
+
 pub struct Args {
-    pub directory: String,
+    pub directory: PathBuf,
 }
 
 pub fn parse() -> Args {
@@ -28,7 +31,7 @@ pub fn parse() -> Args {
         }
     }
 
-    let directory = directory.unwrap_or_else(|| ".".to_owned());
+    let directory = abs_directory_or_cwd(directory);
 
     Args { directory }
 }
@@ -47,4 +50,11 @@ not provided, the current working directory is used instead.";
 fn version() -> ! {
     println!("getpanics {}", env!("CARGO_PKG_VERSION"));
     exit(0);
+}
+
+fn abs_directory_or_cwd(directory: Option<String>) -> PathBuf {
+    match directory {
+        Some(dir) => std::fs::canonicalize(dir).or_die("canonicalize path"),
+        None => std::env::current_dir().or_die("get current working directory"),
+    }
 }
