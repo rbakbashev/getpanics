@@ -1,3 +1,7 @@
+mod args;
+
 fn main() {
-    println!("Hello, world!");
+    let args = args::parse();
+
+    println!("args.directory={}", args.directory);
 }
