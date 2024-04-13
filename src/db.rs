@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ra_ap_ide_db::RootDatabase;
+use ra_ap_ide::RootDatabase;
 use ra_ap_load_cargo as rl;
 use ra_ap_paths::AbsPathBuf;
 use ra_ap_project_model as ra;
