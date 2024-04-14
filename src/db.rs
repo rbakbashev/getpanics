@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 
 use ra_ap_ide::RootDatabase;
 use ra_ap_load_cargo as rl;
@@ -8,8 +8,8 @@ use ra_ap_project_model as ra;
 
 use crate::utils::MaybeError;
 
-pub fn construct(dir: PathBuf) -> (Vec<ra::TargetData>, RootDatabase) {
-    let path = AbsPathBuf::assert_utf8(dir);
+pub fn construct(dir: &Path) -> (Vec<ra::TargetData>, RootDatabase) {
+    let path = AbsPathBuf::assert_utf8(dir.to_path_buf());
     let manifest = ra::ProjectManifest::discover_single(&path).or_die("discover project manifest");
     let cargo_config = construct_cargo_config();
     let workspace =
@@ -37,6 +37,10 @@ fn get_targets(workspace: &ra::ProjectWorkspace) -> Vec<ra::TargetData> {
 
             for package_idx in cargo.packages() {
                 let package = &cargo[package_idx];
+
+                if !package.is_local {
+                    continue;
+                }
 
                 for target_idx in &package.targets {
                     targets.push(cargo[*target_idx].clone());
