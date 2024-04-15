@@ -16,16 +16,18 @@ pub struct State {
 }
 
 pub fn construct(args: &Args) -> State {
-    let path = AbsPathBuf::assert_utf8(args.directory.clone());
-    let manifest = ra::ProjectManifest::discover_single(&path).or_die("discover project manifest");
+    let manifest = discover_manifest(args);
     let workspace = load_manifest(manifest);
     let target = get_target(args, &workspace);
-    let extra_env = HashMap::default();
-    let load_config = construct_load_config();
-    let (db, vfs, _proc_macro_server) =
-        rl::load_workspace(workspace, &extra_env, &load_config).or_die("load workspace");
+    let (db, vfs) = load_workspace(workspace);
 
     State { target, db, vfs }
+}
+
+fn discover_manifest(args: &Args) -> ra::ProjectManifest {
+    let path = AbsPathBuf::assert_utf8(args.directory.clone());
+
+    ra::ProjectManifest::discover_single(&path).or_die("discover project manifest")
 }
 
 fn load_manifest(manifest: ra::ProjectManifest) -> ra::ProjectWorkspace {
@@ -80,6 +82,15 @@ fn get_targets(workspace: &ra::ProjectWorkspace) -> Vec<ra::TargetData> {
             todo!()
         }
     }
+}
+
+fn load_workspace(workspace: ra::ProjectWorkspace) -> (RootDatabase, Vfs) {
+    let extra_env = HashMap::default();
+    let load_config = construct_load_config();
+    let (db, vfs, _proc_macro_server) =
+        rl::load_workspace(workspace, &extra_env, &load_config).or_die("load workspace");
+
+    (db, vfs)
 }
 
 fn construct_load_config() -> rl::LoadCargoConfig {
