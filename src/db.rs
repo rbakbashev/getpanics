@@ -1,24 +1,31 @@
 use std::collections::HashMap;
-use std::path::Path;
 
 use ra_ap_ide::RootDatabase;
 use ra_ap_load_cargo as rl;
 use ra_ap_paths::{AbsPathBuf, RelPath, Utf8Path};
 use ra_ap_project_model as ra;
+use ra_ap_vfs::Vfs;
 
+use crate::args::{self, Args};
 use crate::utils::MaybeError;
 
-pub fn construct(dir: &Path) -> (Vec<ra::TargetData>, RootDatabase) {
-    let path = AbsPathBuf::assert_utf8(dir.to_path_buf());
+pub struct State {
+    pub target: ra::TargetData,
+    pub db: RootDatabase,
+    pub vfs: Vfs,
+}
+
+pub fn construct(args: &Args) -> State {
+    let path = AbsPathBuf::assert_utf8(args.directory.clone());
     let manifest = ra::ProjectManifest::discover_single(&path).or_die("discover project manifest");
     let workspace = load_manifest(manifest);
-    let targets = get_targets(&workspace);
+    let target = get_target(args, &workspace);
     let extra_env = HashMap::default();
     let load_config = construct_load_config();
-    let (db, _vfs, _proc_macro_server) =
+    let (db, vfs, _proc_macro_server) =
         rl::load_workspace(workspace, &extra_env, &load_config).or_die("load workspace");
 
-    (targets, db)
+    State { target, db, vfs }
 }
 
 fn load_manifest(manifest: ra::ProjectManifest) -> ra::ProjectWorkspace {
@@ -33,6 +40,12 @@ fn construct_cargo_config() -> ra::CargoConfig {
         sysroot: Some(ra::RustLibSource::Discover),
         ..Default::default()
     }
+}
+
+fn get_target(args: &Args, workspace: &ra::ProjectWorkspace) -> ra::TargetData {
+    let targets = get_targets(workspace);
+
+    args::choose_target(args, &targets)
 }
 
 fn get_targets(workspace: &ra::ProjectWorkspace) -> Vec<ra::TargetData> {

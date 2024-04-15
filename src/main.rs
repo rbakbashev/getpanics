@@ -11,6 +11,5 @@ mod utils;
 
 fn main() {
     let args = args::parse();
-    let (targets, db) = db::construct(&args.directory);
-    let target = args::choose_target(&args, &targets);
+    let state = db::construct(&args);
 }
