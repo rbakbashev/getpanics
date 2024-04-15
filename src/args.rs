@@ -4,7 +4,7 @@ use std::process::exit;
 use ra_ap_project_model as ra;
 
 use crate::die;
-use crate::utils::MaybeError;
+use crate::utils::{self, MaybeError};
 
 pub struct Args {
     pub directory: PathBuf,
@@ -108,20 +108,7 @@ fn print_targets(targets: &[ra::TargetData]) -> ! {
 
     for target in targets {
         let name = &target.name;
-        let desc = match target.kind {
-            ra::TargetKind::Bin => "bin",
-            ra::TargetKind::Lib {
-                is_proc_macro: false,
-            } => "lib",
-            ra::TargetKind::Lib {
-                is_proc_macro: true,
-            } => "proc-macro",
-            ra::TargetKind::Example => "example",
-            ra::TargetKind::Test => "test",
-            ra::TargetKind::Bench => "bench",
-            ra::TargetKind::BuildScript => "build script",
-            ra::TargetKind::Other => "other",
-        };
+        let desc = utils::describe_target_kind(target.kind);
 
         println!("    {name} ({desc})");
     }
