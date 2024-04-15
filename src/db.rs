@@ -11,9 +11,7 @@ use crate::utils::MaybeError;
 pub fn construct(dir: &Path) -> (Vec<ra::TargetData>, RootDatabase) {
     let path = AbsPathBuf::assert_utf8(dir.to_path_buf());
     let manifest = ra::ProjectManifest::discover_single(&path).or_die("discover project manifest");
-    let cargo_config = construct_cargo_config();
-    let workspace =
-        ra::ProjectWorkspace::load(manifest, &cargo_config, &progress_cb).or_die("load project");
+    let workspace = load_manifest(manifest);
     let targets = get_targets(&workspace);
     let extra_env = HashMap::default();
     let load_config = construct_load_config();
@@ -21,6 +19,13 @@ pub fn construct(dir: &Path) -> (Vec<ra::TargetData>, RootDatabase) {
         rl::load_workspace(workspace, &extra_env, &load_config).or_die("load workspace");
 
     (targets, db)
+}
+
+fn load_manifest(manifest: ra::ProjectManifest) -> ra::ProjectWorkspace {
+    let cargo_config = construct_cargo_config();
+    let progress_cb = |_msg: String| {};
+
+    ra::ProjectWorkspace::load(manifest, &cargo_config, &progress_cb).or_die("load project")
 }
 
 fn construct_cargo_config() -> ra::CargoConfig {
@@ -71,6 +76,3 @@ fn construct_load_config() -> rl::LoadCargoConfig {
         prefill_caches: false,
     }
 }
-
-#[allow(clippy::needless_pass_by_value)] // it's a callback
-fn progress_cb(_msg: String) {}
