@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use ra_ap_ide as ri;
 use ra_ap_syntax::ast::AstNode;
@@ -10,18 +10,20 @@ use crate::die;
 use crate::utils::MaybeError;
 
 pub struct Graph {
-    adj_list: Vec<HashSet<usize>>,
-    indices: HashMap<String, usize>,
+    pub name: String,
+    pub adj_list: Vec<HashSet<usize>>,
+    pub indices: BTreeMap<String, usize>,
 }
 
 pub fn construct(state: State) -> Graph {
+    let crate_name = get_crate_name(&state);
     let root_file_id = get_root_file_id(&state);
     let host = ri::AnalysisHost::with_database(state.db);
     let analysis = host.analysis();
     let source_file = analysis.parse(root_file_id).or_die("parse root file");
     let syntax_tree = source_file.syntax();
 
-    let mut graph = Graph::new();
+    let mut graph = Graph::new(crate_name);
 
     for toplevel in syntax_tree.children() {
         if toplevel.kind() != SyntaxKind::FN {
@@ -35,6 +37,10 @@ pub fn construct(state: State) -> Graph {
     }
 
     graph
+}
+
+fn get_crate_name(state: &State) -> String {
+    state.target.name.clone()
 }
 
 fn get_root_file_id(state: &State) -> vfs::FileId {
@@ -58,10 +64,11 @@ fn find_child(node: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxNode> {
 }
 
 impl Graph {
-    fn new() -> Self {
+    fn new(name: String) -> Self {
         Self {
+            name,
             adj_list: Vec::new(),
-            indices: HashMap::new(),
+            indices: BTreeMap::new(),
         }
     }
 

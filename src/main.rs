@@ -8,10 +8,13 @@
 mod args;
 mod db;
 mod graph;
+mod graphviz;
 mod utils;
 
 fn main() {
     let args = args::parse();
     let state = db::construct(&args);
     let graph = graph::construct(state);
+
+    graphviz::output(graph);
 }
