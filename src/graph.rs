@@ -53,9 +53,6 @@ fn get_root_file_id(state: &State) -> vfs::FileId {
 }
 
 fn get_fn_name(fn_node: &SyntaxNode) -> String {
-    // println!("fn_node={}", fn_node);
-    // println!("fn_node={:#?}", fn_node);
-
     find_child(fn_node, SyntaxKind::NAME)
         .or_die("find NAME")
         .text()
@@ -89,30 +86,6 @@ impl Graph {
         self.indices.insert(name, index);
 
         index
-    }
-
-    fn _insert_function_calls(&mut self, fn_node: &SyntaxNode, idx: usize) {
-        let block = find_child(fn_node, SyntaxKind::BLOCK_EXPR).or_die("find BLOCK_EXPR");
-
-        for event in block.preorder() {
-            let WalkEvent::Enter(e) = event else {
-                continue;
-            };
-
-            if e.kind() != SyntaxKind::CALL_EXPR {
-                continue;
-            }
-
-            let path_expr = e.first_child().or_die("get CALL_EXPR's child");
-
-            if path_expr.kind() != SyntaxKind::PATH_EXPR {
-                die!("unexpected PATH_EXPR kind: {:?}", path_expr.kind());
-            }
-
-            let full_path = path_expr.text().to_string();
-
-            self.connect(idx, full_path);
-        }
     }
 
     fn connect(&mut self, src: usize, dst: String) {
