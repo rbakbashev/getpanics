@@ -31,9 +31,19 @@ pub fn construct(state: State) -> Graph {
             continue;
         }
 
+        let fn_name = get_fn_name(&toplevel);
+        let src_idx = graph.get_or_insert(fn_name);
+
         println!("processing function {}...", get_fn_name(&toplevel));
 
-        process_fn_children(&mut graph, &mut seen, &analysis, root_file_id, &toplevel);
+        process_fn_children(
+            &mut graph,
+            &mut seen,
+            &analysis,
+            root_file_id,
+            src_idx,
+            &toplevel,
+        );
     }
 
     graph
@@ -97,18 +107,15 @@ impl Graph {
 
 fn process_fn_children(
     graph: &mut Graph,
-    seen: &mut HashSet<String>,
+    seen: &mut HashSet<usize>,
     an: &ri::Analysis,
     file_id: ri::FileId,
+    src_idx: usize,
     fn_node: &SyntaxNode,
 ) {
-    let fn_name = get_fn_name(fn_node);
-
-    if !seen.insert(fn_name.clone()) {
+    if !seen.insert(src_idx) {
         return;
     }
-
-    let src_idx = graph.get_or_insert(fn_name);
 
     let Some(block) = find_child(fn_node, SyntaxKind::BLOCK_EXPR) else {
         println!("...can't find BLOCK_EXPR child");
@@ -129,19 +136,16 @@ fn process_fn_children(
             continue;
         };
 
-        let full_path = path_expr.text().to_string();
-
-        graph.connect(src_idx, full_path);
-
-        process_recursively(graph, seen, an, file_id, &path_expr);
+        process_recursively(graph, seen, an, file_id, src_idx, &path_expr);
     }
 }
 
 fn process_recursively(
     graph: &mut Graph,
-    seen: &mut HashSet<String>,
+    seen: &mut HashSet<usize>,
     an: &ri::Analysis,
     file_id: ri::FileId,
+    src_idx: usize,
     f: &SyntaxNode,
 ) {
     let fn_name = f.text();
@@ -165,6 +169,16 @@ fn process_recursively(
         return;
     };
 
+    let full_path = if let Some(container) = &target.container_name {
+        format!("{}::{}", container, target.name)
+    } else {
+        target.name.to_string()
+    };
+
+    graph.connect(src_idx, full_path.clone());
+
+    let new_src = graph.get_or_insert(full_path);
+
     let source_file = an.parse(target.file_id).or_die("parse file");
     let syntax_tree = source_file.syntax();
 
@@ -180,7 +194,7 @@ fn process_recursively(
         SyntaxKind::STRUCT => println!("...it's a newtype struct"),
         SyntaxKind::TOKEN_TREE => println!("...it's complicated"),
         SyntaxKind::IMPL => println!("TODO"),
-        SyntaxKind::FN => process_fn_children(graph, seen, an, target.file_id, &fn_node),
+        SyntaxKind::FN => process_fn_children(graph, seen, an, target.file_id, new_src, &fn_node),
         _ => {
             println!("fn_node={}", fn_node);
             println!("fn_node={:#?}", fn_node);
